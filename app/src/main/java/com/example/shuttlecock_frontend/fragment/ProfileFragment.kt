@@ -76,9 +76,10 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
         if (!avatarUrl.isNullOrBlank()) {
             imgAvatarPlaceholder.visibility = View.GONE
             imgAvatar.visibility = View.VISIBLE
-            imgAvatar.load(RetrofitClient.baseUrlForImages() + avatarUrl) {
+            imgAvatar.load(RetrofitClient.baseUrlForImages() + avatarUrl + "?t=" + System.currentTimeMillis()) {
                 placeholder(R.drawable.image_background)
                 error(R.drawable.image_background)
+
             }
         } else {
             imgAvatar.visibility = View.GONE

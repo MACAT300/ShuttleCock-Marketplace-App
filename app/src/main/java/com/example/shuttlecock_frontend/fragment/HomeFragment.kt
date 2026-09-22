@@ -18,6 +18,8 @@ import com.example.shuttlecock_frontend.data.UserSession
 import com.example.shuttlecock_frontend.models.Product
 import com.example.shuttlecock_frontend.models.cart.CartItem
 import kotlinx.coroutines.launch
+import android.widget.ImageView
+import coil.load
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
@@ -26,9 +28,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        view.findViewById<TextView>(R.id.tvUsername).text = UserSession.userName ?: "Player"
-        view.findViewById<TextView>(R.id.tvWelcomeName).text =
-            (UserSession.userName ?: "PLAYER").uppercase()
+        refreshUserInfo(view)
 
         // No onHeartClick passed here -> HomeProductAdapter hides the heart icon on this page.
         adapter = HomeProductAdapter(
@@ -45,10 +45,36 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
     }
 
+    private fun refreshAvatar(view: View) {
+        val imgAvatar = view.findViewById<ImageView>(R.id.imgHomeAvatar)
+        val imgPlaceholder = view.findViewById<ImageView>(R.id.imgHomeAvatarPlaceholder)
+
+        val avatarUrl = UserSession.avatarUrl
+        if (!avatarUrl.isNullOrBlank()) {
+            imgPlaceholder.visibility = View.GONE
+            imgAvatar.visibility = View.VISIBLE
+            imgAvatar.load(RetrofitClient.baseUrlForImages() + avatarUrl + "?t=" + System.currentTimeMillis()) {
+                placeholder(R.drawable.image_background)
+                error(R.drawable.image_background)
+            }
+        } else {
+            imgAvatar.visibility = View.GONE
+            imgPlaceholder.visibility = View.VISIBLE
+        }
+    }
+
+    private fun refreshUserInfo(view: View) {
+        view.findViewById<TextView>(R.id.tvUsername).text = UserSession.userName ?: "Player"
+        view.findViewById<TextView>(R.id.tvWelcomeName).text =
+            (UserSession.userName ?: "PLAYER").uppercase()
+        refreshAvatar(view)
+    }
+
     override fun onResume() {
         super.onResume()
         loadFeaturedProducts()
         loadCartBadge()
+        view?.let { refreshUserInfo(it) }
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
@@ -56,6 +82,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         if (!hidden) {
             loadFeaturedProducts()
             loadCartBadge()
+            view?.let { refreshUserInfo(it) }
         }
     }
 

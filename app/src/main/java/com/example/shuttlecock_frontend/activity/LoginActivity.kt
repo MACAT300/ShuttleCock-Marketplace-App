@@ -122,6 +122,7 @@ class LoginActivity : AppCompatActivity() {
                     UserSession.userId = body.user.id
                     UserSession.userName = body.user.name
                     UserSession.isGoogleAccount = body.user.isGoogleAccount
+                    UserSession.avatarUrl = body.user.avatarUrl
 
                     Toast.makeText(this@LoginActivity, "Login successful", Toast.LENGTH_SHORT).show()
 
@@ -177,6 +178,7 @@ class LoginActivity : AppCompatActivity() {
                         UserSession.userId = body.user.id
                         UserSession.userName = body.user.name
                         UserSession.isGoogleAccount = body.user.isGoogleAccount
+                        UserSession.avatarUrl = body.user.avatarUrl
 
                         Toast.makeText(this@LoginActivity, "Login successful", Toast.LENGTH_SHORT).show()
 
