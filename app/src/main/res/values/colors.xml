@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="red">#FF0000</color>
+
+
+
+    <color name="blue">#28A5FF</color>
+    <color name="green">#00FF00</color>
+    <color name="beige">#EDE8D0</color>
+    <color name="darkwhite">#D1CACA</color>
+
+    <color name="grey">#e0e0e0</color>
+
+    <color name="bluegrey">#E9EBF5</color>
+    <color name="blue1">#9DB5CB</color>
+    <color name="blue2">#6B88AA</color>
+    <color name="blue3">#3C4474</color>
+
+    <!-- Dark / neon theme (Home, Explore, Detail, Favourite, Profile) -->
+    <color name="bg_dark">#0D0D0D</color>
+    <color name="bg_card_dark">#1A1A1A</color>
+    <color name="bg_card_dark_border">#2A2A2A</color>
+    <color name="neon_green">#C6FF00</color>
+    <color name="text_grey">#9E9E9E</color>
+    <color name="text_grey_light">#C7C7C7</color>
+</resources>
