@@ -18,7 +18,7 @@
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/bg_card_dark"
+        android:background="@color/bg_dark"
         app:itemIconTint="@color/nav_icon_color"
         app:itemTextColor="@color/nav_icon_color"
         app:labelVisibilityMode="labeled"

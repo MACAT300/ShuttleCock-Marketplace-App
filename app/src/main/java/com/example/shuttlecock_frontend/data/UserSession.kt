@@ -16,11 +16,14 @@ object UserSession {
     private const val KEY_USER_NAME = "userName"
     private const val KEY_CART_ID = "cartId"
 
+    private const val KEY_USER_EMAIL = "userEmail"
+
     private const val KEY_IS_GOOGLE = "isGoogleAccount"
     private const val KEY_AVATAR_URL = "avatarUrl"
 
     private lateinit var prefs: SharedPreferences
     private var initialized = false
+
 
     fun init(context: Context) {
         if (initialized) return
@@ -28,6 +31,10 @@ object UserSession {
             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         initialized = true
     }
+
+    var userEmail: String?
+        get() = prefs.getString(KEY_USER_EMAIL, null)
+        set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
 
     var token: String?
         get() = prefs.getString(KEY_TOKEN, null)

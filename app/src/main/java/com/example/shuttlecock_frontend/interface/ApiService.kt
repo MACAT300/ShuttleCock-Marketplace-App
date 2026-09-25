@@ -13,6 +13,7 @@ import com.example.shuttlecock_frontend.models.order.Order
 import com.example.shuttlecock_frontend.models.order.OrderItem
 import com.example.shuttlecock_frontend.models.payment.PaymentIntentResponse
 import com.example.shuttlecock_frontend.models.favorite.Favorite
+import com.example.shuttlecock_frontend.models.history.BrowsingHistoryItem
 import okhttp3.MultipartBody
 import retrofit2.http.Multipart
 import retrofit2.http.Part
@@ -30,6 +31,12 @@ interface ApiService {
 
     @POST("login/google")
     suspend fun loginWithGoogle(@Body body: Map<String, String>): Response<LoginResponse>
+
+    @POST("password-reset/request")
+    suspend fun requestPasswordReset(@Body body: Map<String, String>): Response<Map<String, String>>
+
+    @POST("password-reset/confirm")
+    suspend fun confirmPasswordReset(@Body body: Map<String, String>): Response<Map<String, String>>
 
     // ===== Products =====
     @GET("products")
@@ -86,7 +93,7 @@ interface ApiService {
     // ===== Orders =====
     // Body: {"userId": 1} -> converts the user's cart into an Order
     @POST("orders/checkout")
-    suspend fun checkout(@Body body: Map<String, Any>): Response<Order>
+    suspend fun checkout(@Body body: HashMap<String, Any>): Response<Order>
 
     @GET("orders")
     suspend fun getOrders(@Query("userId") userId: Int? = null): Response<List<Order>>
@@ -131,4 +138,14 @@ interface ApiService {
         @Query("userId") userId: Int,
         @Query("productId") productId: Int
     ): Response<Void>
+
+    // ===== Order History =====
+    // (getOrders 和 getOrderItems 之前已经有了，直接复用)
+
+    // ===== Browsing History =====
+    @POST("browsing-history")
+    suspend fun recordBrowsingHistory(@Body body: Map<String, Int>): Response<Unit>
+
+    @GET("browsing-history")
+    suspend fun getBrowsingHistory(@Query("userId") userId: Int): Response<List<BrowsingHistoryItem>>
 }

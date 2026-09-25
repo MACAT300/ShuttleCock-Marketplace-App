@@ -8,6 +8,7 @@ data class LoginResponse(
 data class UserSummary(
     val id: Int,
     val name: String,
+
     val email: String,
     val isGoogleAccount: Boolean = false,
     val avatarUrl: String? = null

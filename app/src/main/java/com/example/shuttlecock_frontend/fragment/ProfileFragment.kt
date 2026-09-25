@@ -2,6 +2,7 @@ package com.example.shuttlecock_frontend.fragment
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,10 +10,13 @@ import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import coil.load
@@ -26,6 +30,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.jvm.java
+import com.example.shuttlecock_frontend.activity.OrderHistoryActivity
+import com.example.shuttlecock_frontend.activity.BrowsingHistoryActivity
 
 class ProfileFragment : Fragment(R.layout.fragment_profile) {
 
@@ -33,14 +40,52 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
     private lateinit var imgAvatar: ImageView
     private lateinit var imgAvatarPlaceholder: ImageView
 
+    private var pendingCameraUri: Uri? = null
+
+    // 从相册选图 -> 先去裁剪
     private val pickImageLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data
-            if (uri != null) uploadAvatar(uri)
+            if (uri != null) startCrop(uri)
         }
     }
+
+    // 拍照 -> 先去裁剪
+    private val takePhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            pendingCameraUri?.let { startCrop(it) }
+        }
+    }
+
+    // 裁剪完成 -> 上传
+    private val cropLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            if (data != null) {
+                val croppedUri = com.yalantis.ucrop.UCrop.getOutput(data)
+                if (croppedUri != null) uploadAvatar(croppedUri)
+            }
+        }
+    }
+
+    // 相机权限请求
+    private val requestCameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            Toast.makeText(requireContext(), "Camera permission is required to take a photo", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -51,10 +96,11 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
 
         refreshProfileUi()
 
-        view.findViewById<TextView>(R.id.btnEditName).setOnClickListener { showEditNameDialog() }
-        view.findViewById<TextView>(R.id.btnChangePassword).setOnClickListener { showChangePasswordDialog() }
-        view.findViewById<FrameLayout>(R.id.btnChangeAvatar).setOnClickListener { pickImage() }
-
+        view.findViewById<TextView>(R.id.btnEditProfile).setOnClickListener { showEditNameDialog() }
+        view.findViewById<LinearLayout>(R.id.btnChangePassword).setOnClickListener { showChangePasswordDialog() }
+        view.findViewById<FrameLayout>(R.id.avatarCircle).setOnClickListener {
+            showAvatarViewer()
+        }
         view.findViewById<TextView>(R.id.btnLogout).setOnClickListener {
             UserSession.clear()
             startActivity(
@@ -62,6 +108,14 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             )
         }
+
+        view.findViewById<LinearLayout>(R.id.btnOrderHistory).setOnClickListener {
+            startActivity(Intent(requireContext(), OrderHistoryActivity::class.java))
+        }
+        view.findViewById<LinearLayout>(R.id.btnBrowsingHistory).setOnClickListener {
+            startActivity(Intent(requireContext(), BrowsingHistoryActivity::class.java))
+        }
+
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
@@ -71,6 +125,7 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
 
     private fun refreshProfileUi() {
         tvProfileName.text = UserSession.userName ?: ""
+        view?.findViewById<TextView>(R.id.tvProfileEmail)?.text = UserSession.userEmail ?: ""
 
         val avatarUrl = UserSession.avatarUrl
         if (!avatarUrl.isNullOrBlank()) {
@@ -79,7 +134,6 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
             imgAvatar.load(RetrofitClient.baseUrlForImages() + avatarUrl + "?t=" + System.currentTimeMillis()) {
                 placeholder(R.drawable.image_background)
                 error(R.drawable.image_background)
-
             }
         } else {
             imgAvatar.visibility = View.GONE
@@ -87,22 +141,64 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
         }
     }
 
+    private fun showAvatarViewer() {
+        val avatarUrl = UserSession.avatarUrl
+
+        val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.setContentView(R.layout.dialog_avatar_viewer)
+
+        val imgFullAvatar = dialog.findViewById<ImageView>(R.id.imgFullAvatar)
+
+        if (!avatarUrl.isNullOrBlank()) {
+            imgFullAvatar.load(RetrofitClient.baseUrlForImages() + avatarUrl + "?t=" + System.currentTimeMillis()) {
+                placeholder(R.drawable.image_background)
+                error(R.drawable.image_background)
+                transformations(coil.transform.CircleCropTransformation())
+            }
+        } else {
+            imgFullAvatar.setImageResource(R.drawable.ic_nav_profile)
+        }
+
+        imgFullAvatar.alpha = 0f
+        imgFullAvatar.scaleX = 0.85f
+        imgFullAvatar.scaleY = 0.85f
+        imgFullAvatar.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(250).start()
+
+        dialog.findViewById<FrameLayout>(android.R.id.content).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.findViewById<FrameLayout>(R.id.btnEditAvatar).setOnClickListener {
+            dialog.dismiss()
+            showAvatarSourceDialog()
+        }
+
+        dialog.show()
+    }
+
     // ===== Edit name =====
     private fun showEditNameDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_field, null)
+        val title = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
         val input1 = dialogView.findViewById<EditText>(R.id.etDialogInput1)
+
+        title.text = "Edit Name"
         input1.hint = "Name"
         input1.setText(UserSession.userName)
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Edit Name")
+        val dialog = AlertDialog.Builder(requireContext(), R.style.DarkDialogTheme)
             .setView(dialogView)
-            .setPositiveButton("Save") { _, _ ->
-                val newName = input1.text.toString().trim()
-                if (newName.isNotEmpty()) updateName(newName)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<TextView>(R.id.btnDialogSave).setOnClickListener {
+            val newName = input1.text.toString().trim()
+            if (newName.isNotEmpty()) updateName(newName)
+            dialog.dismiss()
+        }
+        dialogView.findViewById<TextView>(R.id.btnDialogCancel).setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
     }
 
     private fun updateName(newName: String) {
@@ -128,13 +224,14 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
     // ===== Change password =====
     private fun showChangePasswordDialog() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_field, null)
+        val title = dialogView.findViewById<TextView>(R.id.tvDialogTitle)
         val input1 = dialogView.findViewById<EditText>(R.id.etDialogInput1)
         val input2 = dialogView.findViewById<EditText>(R.id.etDialogInput2)
 
+        title.text = "Change Password"
         val isGoogle = UserSession.isGoogleAccount
 
         if (isGoogle) {
-            // Google账号没有真正的密码，跳过"输入现在密码"这一步，直接设新密码
             input1.hint = "New password"
             input1.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             input2.visibility = View.GONE
@@ -146,25 +243,30 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
             input2.visibility = View.VISIBLE
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("Change Password")
+        val dialog = AlertDialog.Builder(requireContext(), R.style.DarkDialogTheme)
             .setView(dialogView)
-            .setPositiveButton("Save") { _, _ ->
-                if (isGoogle) {
-                    val newPassword = input1.text.toString()
-                    if (newPassword.isNotEmpty()) changePassword(null, newPassword)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<TextView>(R.id.btnDialogSave).setOnClickListener {
+            if (isGoogle) {
+                val newPassword = input1.text.toString()
+                if (newPassword.isNotEmpty()) changePassword(null, newPassword)
+            } else {
+                val currentPassword = input1.text.toString()
+                val newPassword = input2.text.toString()
+                if (currentPassword.isNotEmpty() && newPassword.isNotEmpty()) {
+                    changePassword(currentPassword, newPassword)
                 } else {
-                    val currentPassword = input1.text.toString()
-                    val newPassword = input2.text.toString()
-                    if (currentPassword.isNotEmpty() && newPassword.isNotEmpty()) {
-                        changePassword(currentPassword, newPassword)
-                    } else {
-                        Toast.makeText(requireContext(), "Please fill in both fields", Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(requireContext(), "Please fill in both fields", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            dialog.dismiss()
+        }
+        dialogView.findViewById<TextView>(R.id.btnDialogCancel).setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
     }
 
     private fun changePassword(currentPassword: String?, newPassword: String) {
@@ -186,12 +288,83 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
         }
     }
 
-    // ===== Avatar upload =====
-    private fun pickImage() {
+    // ===== Avatar: choose source =====
+    private fun showAvatarSourceDialog() {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_avatar_source, null)
+
+        val dialog = AlertDialog.Builder(requireContext(), R.style.DarkDialogTheme)
+            .setView(dialogView)
+            .create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        dialogView.findViewById<TextView>(R.id.btnTakePhoto).setOnClickListener {
+            dialog.dismiss()
+            checkCameraPermissionAndLaunch()
+        }
+        dialogView.findViewById<TextView>(R.id.btnChooseGallery).setOnClickListener {
+            dialog.dismiss()
+            pickFromGallery()
+        }
+        dialogView.findViewById<TextView>(R.id.btnDialogCancel).setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
+    }
+
+    private fun pickFromGallery() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
         pickImageLauncher.launch(intent)
     }
 
+    private fun checkCameraPermissionAndLaunch() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            requireContext(), android.Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            launchCamera()
+        } else {
+            requestCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchCamera() {
+        val photoFile = File.createTempFile("avatar_camera_", ".jpg", requireContext().cacheDir)
+        val photoUri = FileProvider.getUriForFile(
+            requireContext(),
+            "${requireContext().packageName}.fileprovider",
+            photoFile
+        )
+        pendingCameraUri = photoUri
+
+        val intent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoUri)
+        }
+        takePhotoLauncher.launch(intent)
+    }
+
+    // ===== Crop =====
+    private fun startCrop(sourceUri: Uri) {
+        val destFile = File(requireContext().cacheDir, "avatar_cropped_${System.currentTimeMillis()}.jpg")
+        val destUri = Uri.fromFile(destFile)
+
+        val options = com.yalantis.ucrop.UCrop.Options().apply {
+            setCircleDimmedLayer(true)
+            setShowCropFrame(false)
+            setShowCropGrid(false)
+            setToolbarTitle("Adjust Photo")
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(90)
+        }
+
+        val uCropIntent = com.yalantis.ucrop.UCrop.of(sourceUri, destUri)
+            .withAspectRatio(1f, 1f)
+            .withOptions(options)
+            .getIntent(requireContext())
+
+        cropLauncher.launch(uCropIntent)
+    }
+
+    // ===== Upload =====
     private fun uploadAvatar(uri: Uri) {
         lifecycleScope.launch {
             try {

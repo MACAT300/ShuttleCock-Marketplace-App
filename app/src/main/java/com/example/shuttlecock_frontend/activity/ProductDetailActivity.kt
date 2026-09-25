@@ -74,8 +74,21 @@ class ProductDetailActivity : AppCompatActivity() {
                 }
                 product = p
                 bindProduct(p)
+                recordBrowsingHistory(productId) // 加这一行
             } catch (e: Exception) {
                 Toast.makeText(this@ProductDetailActivity, "Network error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun recordBrowsingHistory(productId: Int) {
+        lifecycleScope.launch {
+            try {
+                RetrofitClient.apiService.recordBrowsingHistory(
+                    mapOf("userId" to UserSession.userId, "productId" to productId)
+                )
+            } catch (e: Exception) {
+                // 记录浏览记录失败不影响用户正常看商品，静默处理就好
             }
         }
     }
@@ -173,7 +186,11 @@ class ProductDetailActivity : AppCompatActivity() {
                 val addResponse = RetrofitClient.apiService.addCartItem(newItem)
 
                 if (addResponse.isSuccessful) {
-                    Toast.makeText(this@ProductDetailActivity, "${p.name} added to cart", Toast.LENGTH_SHORT).show()
+                    com.google.android.material.snackbar.Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "${p.name} added to cart",
+                        800 // 毫秒，想多短都可以自己调
+                    ).show()
                 } else {
                     val msg = addResponse.errorBody()?.string() ?: "Failed to add to cart"
                     Toast.makeText(this@ProductDetailActivity, msg, Toast.LENGTH_SHORT).show()

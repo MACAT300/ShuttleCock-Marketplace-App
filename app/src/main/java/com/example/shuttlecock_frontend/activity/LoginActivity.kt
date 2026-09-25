@@ -58,6 +58,9 @@ class LoginActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         btnTogglePassword = findViewById(R.id.btnTogglePassword)
 
+        setupTaglineRotation()
+
+
         btnLogin.setOnClickListener {
             doLogin()
         }
@@ -70,10 +73,15 @@ class LoginActivity : AppCompatActivity() {
             togglePasswordVisibility()
         }
 
+        findViewById<TextView>(R.id.tvForgotPassword).setOnClickListener {
+            startActivity(Intent(this, ForgotPasswordActivity::class.java))
+        }
+
         findViewById<LinearLayout>(R.id.btnGoogle).setOnClickListener {
             signInWithGoogle()
         }
     }
+
 
     private fun signInWithGoogle() {
         val credentialManager = CredentialManager.create(this)
@@ -121,6 +129,7 @@ class LoginActivity : AppCompatActivity() {
                     RetrofitClient.authToken = body.token
                     UserSession.userId = body.user.id
                     UserSession.userName = body.user.name
+                    UserSession.userEmail = body.user.email
                     UserSession.isGoogleAccount = body.user.isGoogleAccount
                     UserSession.avatarUrl = body.user.avatarUrl
 
@@ -177,6 +186,7 @@ class LoginActivity : AppCompatActivity() {
                         RetrofitClient.authToken = body.token
                         UserSession.userId = body.user.id
                         UserSession.userName = body.user.name
+                        UserSession.userEmail = body.user.email
                         UserSession.isGoogleAccount = body.user.isGoogleAccount
                         UserSession.avatarUrl = body.user.avatarUrl
 
@@ -202,5 +212,37 @@ class LoginActivity : AppCompatActivity() {
     private fun setLoading(isLoading: Boolean) {
         progressBar.visibility = if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
         btnLogin.isEnabled = !isLoading
+    }
+
+    private val taglines = listOf(
+        "The Creation of Every Smash",
+        "Where Every Game Begins",
+        "Made for Every Rally",
+        "Built for the Perfect Shot"
+    )
+    private var taglineIndex = 0
+    private val taglineHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun setupTaglineRotation() {
+        val tvTagline = findViewById<TextView>(R.id.tvTagline)
+
+        val rotate = object : Runnable {
+            override fun run() {
+                // 淡出 -> 换字 -> 淡入，比直接跳字更有质感
+                tvTagline.animate().alpha(0f).setDuration(900).withEndAction {
+                    taglineIndex = (taglineIndex + 1) % taglines.size
+                    tvTagline.text = taglines[taglineIndex]
+                    tvTagline.animate().alpha(1f).setDuration(900).start()
+                }.start()
+
+                taglineHandler.postDelayed(this, 5000) // 每3.5秒切换一句
+            }
+        }
+        taglineHandler.postDelayed(rotate, 5000)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        taglineHandler.removeCallbacksAndMessages(null)
     }
 }

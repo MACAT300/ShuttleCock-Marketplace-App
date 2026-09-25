@@ -36,9 +36,16 @@ class BrandChipAdapter(
 
         holder.name.text = if (isAll) "All" else brand?.name ?: ""
 
+        val params = holder.logo.layoutParams
         if (isAll) {
-            holder.logo.setImageResource(R.drawable.ic_all_brands)
+            params.width = dpToPx(holder.itemView.context, 30)
+            params.height = dpToPx(holder.itemView.context, 30)
+            holder.logo.layoutParams = params
+            holder.logo.load(R.drawable.ic_all_brands)
         } else {
+            params.width = dpToPx(holder.itemView.context, 30)
+            params.height = dpToPx(holder.itemView.context, 30)
+            holder.logo.layoutParams = params
             val logoUrl = brand?.image?.url
             if (!logoUrl.isNullOrBlank()) {
                 holder.logo.load(logoUrl) {
@@ -46,7 +53,7 @@ class BrandChipAdapter(
                     error(R.drawable.bg_circle_plain)
                 }
             } else {
-                holder.logo.setImageDrawable(null)
+                holder.logo.load(R.drawable.bg_circle_plain)
             }
         }
 
@@ -54,6 +61,13 @@ class BrandChipAdapter(
         holder.root.isSelected = isSelected
         val textColor = if (isSelected) R.color.bg_dark else R.color.white
         holder.name.setTextColor(holder.itemView.context.getColor(textColor))
+
+        // "All"的图标是纯色图案，要跟着背景切换深浅，不然深色背景下会看不清
+        if (isAll) {
+            holder.logo.setColorFilter(holder.itemView.context.getColor(textColor))
+        } else {
+            holder.logo.clearColorFilter() // 品牌logo本身是彩色的，不需要染色
+        }
 
         holder.root.setOnClickListener {
             selectedBrandId = brand?.id
@@ -67,5 +81,9 @@ class BrandChipAdapter(
     fun updateBrands(newBrands: List<Brand>) {
         brands = newBrands
         notifyDataSetChanged()
+    }
+
+    private fun dpToPx(context: android.content.Context, dp: Int): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
     }
 }

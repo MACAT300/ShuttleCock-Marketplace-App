@@ -168,11 +168,14 @@ class CartFragment : Fragment(R.layout.fragment_cart) {
         }
 
         confirmButton.isEnabled = false
+        confirmButton.alpha = 0.5f
+        val originalText = confirmButton.text
+        confirmButton.text = "Processing..."
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val orderResponse = RetrofitClient.apiService.checkout(
-                    mapOf(
+                    hashMapOf(
                         "userId" to UserSession.userId,
                         "cartItemIds" to selectedIds.toList()
                     )
@@ -193,10 +196,13 @@ class CartFragment : Fragment(R.layout.fragment_cart) {
                 }
 
                 paymentLauncher.launch(PaymentWebViewActivity.start(requireContext(), payment.url))
-            } catch (e: Exception) {
+                } catch (e: Exception) {
+                android.util.Log.e("CHECKOUT_ERROR", "Full error", e)
                 Toast.makeText(requireContext(), "Network error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             } finally {
                 confirmButton.isEnabled = true
+                confirmButton.alpha = 1f
+                confirmButton.text = originalText
             }
         }
     }

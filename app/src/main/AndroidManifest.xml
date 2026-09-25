@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
         android:name=".App"
         android:allowBackup="true"
@@ -16,8 +19,14 @@
             <activity android:name=".activity.MainHostActivity" />
         <activity android:name=".activity.ProductDetailActivity" />
         <activity android:name=".activity.PaymentWebViewActivity" />
+        <activity android:name=".activity.ForgotPasswordActivity" />
+        <activity android:name=".activity.ResetPasswordActivity" />
+        <activity android:name=".activity.OrderHistoryActivity" />
+        <activity android:name=".activity.OrderDetailActivity" />
+        <activity android:name=".activity.BrowsingHistoryActivity" />
         <activity android:name="SignUpActivity" />
         <activity
+
             android:name=".activity.LoginActivity"
             android:exported="true">
             <intent-filter>
@@ -25,6 +34,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:theme="@style/UCropTheme" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

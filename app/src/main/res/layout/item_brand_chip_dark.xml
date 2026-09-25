@@ -15,7 +15,7 @@
         android:id="@+id/imgBrandLogo"
         android:layout_width="30dp"
         android:layout_height="30dp"
-        android:scaleType="centerInside" />
+        android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/tvBrandName"
